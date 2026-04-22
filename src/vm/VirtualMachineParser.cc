@@ -307,7 +307,7 @@ int VirtualMachine::parse_features(Template * tmpl, string& err)
         }
     }
 
-    value = one_util::trim(features->vector_value("GIC"));
+    value = features->vector_value("GIC");
 
     if ( !value.empty() )
     {
@@ -324,7 +324,7 @@ int VirtualMachine::parse_features(Template * tmpl, string& err)
         features->replace("GIC", value);
     }
 
-    value = one_util::trim(features->vector_value("MIGRATE_AUTO_CONVERGE"));
+    value = features->vector_value("MIGRATE_AUTO_CONVERGE");
 
     if ( !value.empty() )
     {
@@ -524,7 +524,7 @@ int VirtualMachine::check_pci_attributes(VectorAttribute * pci, string& error_st
         pci->replace("ROOT", root);
     }
 
-    string acpi_nodes = one_util::trim(pci->vector_value("ACPI_NODES"));
+    string acpi_nodes = pci->vector_value("ACPI_NODES");
 
     if (!acpi_nodes.empty())
     {
@@ -1401,7 +1401,7 @@ int VirtualMachine::parse_topology(Template * tmpl, std::string &error)
             (*it)->vector_value("TOTAL_CPUS", ncpu);
             (*it)->vector_value("MEMORY", nmem);
 
-            dst = one_util::trim((*it)->vector_value("DISTANCE"));
+            dst = (*it)->vector_value("DISTANCE");
 
             if ((nmem == 0 && ncpu > 0) || (nmem > 0 && ncpu == 0))
             {
