@@ -8,6 +8,14 @@
 #
 # logo: custom_logo.png
 
+# Specify the filename for a custom favicon to be used in the browser tab.
+# Acceptable formats include: .ico, .jpg, .jpeg, .png.
+# Ensure the filename adheres to the pattern: [a-zA-Z0-9-_]+.(ico|jpg|jpeg|png)
+# The file must exist in assets/favicon/sunstone.
+# Example:
+#
+# favicon: custom_logo.png
+
 groups:
     oneadmin:
         - admin
