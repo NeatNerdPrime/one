@@ -41,7 +41,11 @@ class BaseDomain
         'gpu_memory_utilization',
         'gpu_memory_free',
         'gpu_power_usage',
-        'gpu_count'
+        'gpu_count',
+        'os_id',
+        'os_type',
+        'os_version',
+        'os_machine'
     ]
 
     DB_MONITOR_KEYS = MONITOR_KEYS.clone

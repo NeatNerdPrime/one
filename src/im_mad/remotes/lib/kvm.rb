@@ -53,7 +53,9 @@ module KVM
     QEMU_GA = {
         :enabled => false,
         :commands => {
-            :vm_qemu_ping => "one-$vm_id \'{\"execute\":\"guest-ping\"}\' --timeout 5"
+            :vm_qemu_ping => {
+                :command => "one-$vm_id \'{\"execute\":\"guest-ping\"}\' --timeout 5"
+            }
         }
     }
 
@@ -89,6 +91,12 @@ module KVM
 
         QEMU_GA[:commands].each_key do |ga_info|
             Domain::MONITOR_KEYS << ga_info
+        end
+
+        # Normalize string command syntax to filtering syntax with all empty filters
+        QEMU_GA[:commands].transform_values! do |value|
+            value = { :command => value } if value.is_a?(String)
+            { :os_ids => [], :os_types => [], :os_machines => [], :os_versions => [] }.merge(value)
         end
     rescue StandardError
     end
@@ -402,12 +410,17 @@ class Domain < BaseDomain
 
     # Get OS metrics provided by the qemu guest agent
     def ga_stats
-        ga_commands = KVM::QEMU_GA[:commands].transform_values do |ga_cmd|
-            ga_cmd.gsub('$vm_id', @vm[:id])
-        end
-
         if KVM::QEMU_GA[:enabled]
+            extract_ga_attributes
+
+            ga_commands = KVM::QEMU_GA[:commands].transform_values do |ga_cmd_config|
+                ga_cmd_config[:command].gsub('$vm_id', @vm[:id])
+            end
+
             ga_commands.each do |ga_info, ga_cmd|
+                # Skip commands that don't match VM OS filter
+                next unless command_matches_filter?(KVM::QEMU_GA[:commands][ga_info])
+
                 text, e, s = KVM.virsh(:qemuga, ga_cmd)
 
                 if s.exitstatus != 0
@@ -417,7 +430,7 @@ class Domain < BaseDomain
                         info = JSON.parse(text)['return']
 
                         info = info.join(', ') if info.is_a?(Array)
-                        info = info.to_s.gsub(/["\[\]]/) { |match| "\\#{match}" } if info.is_a?(Hash)
+                        info = info.to_s.gsub(/["\[\]]/) {|match| "\\#{match}" } if info.is_a?(Hash)
 
                         @vm[ga_info] = info
                     rescue JSON::ParserError => e
@@ -426,10 +439,37 @@ class Domain < BaseDomain
                 end
             end
         else
-            ga_commands.each_key do |ga_info|
+            KVM::QEMU_GA[:commands].each_key do |ga_info|
                 @vm[ga_info] = 'QEMU Guest Agent monitoring disabled'
             end
         end
+    end
+
+    # Set OS info from guest agent, unless there's already cached value
+    def extract_ga_attributes
+        return if @vm[:os_type]
+
+        osinfo_cmd = "one-#{@vm[:id]} '{\"execute\":\"guest-get-osinfo\"}' --timeout 10"
+        text, _e, s = KVM.virsh(:qemuga, osinfo_cmd)
+
+        if s.success?
+            osinfo = JSON.parse(text)['return']
+            @vm[:os_id]      = osinfo['id'] || 'unknown'
+            @vm[:os_type]    = @vm[:os_id] == 'mswindows' ? 'mswindows' : 'posix'
+            @vm[:os_version] = osinfo['version-id'] || 'unknown'
+            @vm[:os_machine] = osinfo['machine'] || 'unknown'
+        end
+    end
+
+    # Check if command should run on given VM (OS filters)
+    def command_matches_filter?(ga_cmd_config)
+        # AND logic: run if ALL filters are either empty or match the VM value
+        [
+            [ga_cmd_config[:os_ids], @vm[:os_id]],
+            [ga_cmd_config[:os_types], @vm[:os_type]],
+            [ga_cmd_config[:os_versions], @vm[:os_version]],
+            [ga_cmd_config[:os_machines], @vm[:os_machine]]
+        ].all? {|filter, value| filter.empty? || filter.include?(value) }
     end
 
     # Detects if VM has GPU by parsing PCI devices from domain metadata
