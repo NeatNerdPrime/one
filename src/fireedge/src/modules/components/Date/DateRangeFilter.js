@@ -16,12 +16,11 @@
 import PropTypes from 'prop-types'
 import { Component, useState } from 'react'
 import { Box, TextField } from '@mui/material'
-import { DatePicker } from '@mui/lab'
+import { DatePicker, LocalizationProvider } from '@mui/lab'
 import { DateTime, Settings } from 'luxon'
 import { Tr } from '@modules/components/HOC'
 import { T } from '@ConstantsModule'
 
-import LocalizationProvider from '@mui/lab/LocalizationProvider'
 import AdapterLuxon from '@mui/lab/AdapterLuxon'
 import { useAuth } from '@FeaturesModule'
 
